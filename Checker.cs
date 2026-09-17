@@ -8,115 +8,52 @@ namespace Password_Strength
         {
             InitializeComponent();
         }
-        //Variable creation
-        int barValue;
-        string previousPass = "";
-        string password = "";
         // This method is called whenever the text in the tbPassword TextBox changes.
+        //
+        // NOTE: this used to track strength incrementally (barValue++/-- as the user
+        // typed), which meant a single edit that changed the password by more than one
+        // character at once (paste, select-and-delete, cut) could only update ONE
+        // requirement per keystroke via an if/else-if chain, leaving the meter and the
+        // hint labels out of sync with the actual password for several keystrokes.
+        // Recomputing every requirement from scratch on every change removes that whole
+        // class of bug - it's always correct for whatever the textbox currently contains,
+        // regardless of how it got there.
         private void tbPassword_TextChanged(object sender, EventArgs e)
         {
-            // Store the new password in the 'password' variable.
-            password = tbPassword.Text;
+            string password = tbPassword.Text;
 
-            // If the new password is longer than the previous password...
-            if (password.Length > previousPass.Length)
+            // No whitespace allowed - strip it immediately and warn once.
+            if (password.Any(char.IsWhiteSpace))
             {
-                // Loop through each character in the new password.
-                foreach (char c in password)
-                {
-                    // If the character is a whitespace character...
-                    if (char.IsWhiteSpace(c))
-                    {
-                        // Clear the password field and show an error message.
-                        tbPassword.Text = string.Empty;
-                        MessageBox.Show("No whitespaces allowed in the password");
-                    }
-                    // If the character is a digit and the 'NoNumbers' label is currently visible...
-                    if (char.IsDigit(c) && lblNoNumbers.Visible)
-                    {
-                        // Hide the 'NoNumbers' label and increment the 'barValue' variable.
-                        lblNoNumbers.Visible = false;
-                        barValue++;
-                    }
-                    // If the character is a lowercase letter and the 'NoLower' label is currently visible...
-                    else if (char.IsLower(c) && lblNoLower.Visible)
-                    {
-                        // Hide the 'NoLower' label and increment the 'barValue' variable.
-                        lblNoLower.Visible = false;
-                        barValue++;
-                    }
-                    // If the character is an uppercase letter and the 'NoUpper' label is currently visible...
-                    else if (char.IsUpper(c) && lblNoUpper.Visible)
-                    {
-                        // Hide the 'NoUpper' label and increment the 'barValue' variable.
-                        lblNoUpper.Visible = false;
-                        barValue++;
-                    }
-                    // If the character is a symbol (not a letter or digit) and the 'NoSymbols' label is currently visible...
-                    else if (Regex.IsMatch(password, "[^a-zA-Z0-9]+") && lblNoSymbols.Visible)
-                    {
-                        // Hide the 'NoSymbols' label and increment the 'barValue' variable.
-                        lblNoSymbols.Visible = false;
-                        barValue++;
-                    }
-                    // If the password is longer than 11 characters and the 'PasswordLength' label is currently visible...
-                    else if (password.Length > 11 && lblPasswordLength.Visible)
-                    {
-                        // Hide the 'PasswordLength' label and increment the 'barValue' variable.
-                        lblPasswordLength.Visible = false;
-                        barValue++;
-                    }
-                }
-                // Store the new password as the previous password for the next time this method is called.
-                previousPass = password;
+                tbPassword.Text = string.Empty;
+                MessageBox.Show("No whitespaces allowed in the password");
+                return; // TextChanged will fire again for the now-empty textbox
             }
-            // If the new password is shorter than the previous password...
-            else if (password.Length < previousPass.Length)
-            {
-                // Check which password requirement(s) are no longer met and update the progress bar accordingly.
-                if (!password.Any(char.IsDigit) && !lblNoNumbers.Visible)
-                {
-                    lblNoNumbers.Visible = true;
-                    barValue--;
-                }
-                else if (!password.Any(char.IsLower) && !lblNoLower.Visible)
-                {
-                    lblNoLower.Visible = true;
-                    barValue--;
-                }
-                else if (!password.Any(char.IsUpper) && !lblNoUpper.Visible)
-                {
-                    lblNoUpper.Visible = true;
-                    barValue--;
-                }
-                else if (password.Length <= 11 && !lblPasswordLength.Visible)
-                {
-                    lblPasswordLength.Visible = true;
-                    barValue--;
-                }
-                else if (!Regex.IsMatch(password, "[^a-zA-Z0-9]+") && !lblNoSymbols.Visible)
-                {
-                    lblNoSymbols.Visible = true;
-                    barValue--;
-                }
-                else
-                {
 
-                }
-                previousPass = password;
-            }
-            //If password is empty, then resets all the labels and progressbar
+            bool hasDigit = password.Any(char.IsDigit);
+            bool hasLower = password.Any(char.IsLower);
+            bool hasUpper = password.Any(char.IsUpper);
+            bool hasSymbol = Regex.IsMatch(password, "[^a-zA-Z0-9]");
+            bool longEnough = password.Length > 11;
+
+            lblNoNumbers.Visible = !hasDigit;
+            lblNoLower.Visible = !hasLower;
+            lblNoUpper.Visible = !hasUpper;
+            lblNoSymbols.Visible = !hasSymbol;
+            lblPasswordLength.Visible = !longEnough;
+
+            int barValue = 0;
+            if (hasDigit) barValue++;
+            if (hasLower) barValue++;
+            if (hasUpper) barValue++;
+            if (hasSymbol) barValue++;
+            if (longEnough) barValue++;
+
             if (string.IsNullOrEmpty(password))
             {
-                // Reset the progress bar and labels
-                prgrbrStrength.Value = 0;
-                lblNoNumbers.Visible = true;
-                lblNoLower.Visible = true;
-                lblNoUpper.Visible = true;
-                lblNoSymbols.Visible = true;
-                lblPasswordLength.Visible = true;
                 barValue = 0;
             }
+
             prgrbrStrength.Value = barValue;
 
             //If barValue is 0-2, print Weak Password on the label
